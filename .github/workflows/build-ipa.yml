@@ -3,8 +3,12 @@ name: Build unsigned IPA
 on:
   workflow_dispatch:
     inputs:
+      repository:
+        description: Repository holding the app source
+        required: true
+        default: sleepypod/ios
       ref:
-        description: sleepypod/ios tag or branch to build
+        description: Tag or branch to build
         required: true
         default: v1.3.1
 
@@ -17,11 +21,12 @@ jobs:
     timeout-minutes: 45
     env:
       SOURCE_REF: ${{ inputs.ref }}
+      SOURCE_REPO: ${{ inputs.repository }}
     steps:
       - name: Get the app source
         uses: actions/checkout@v4
         with:
-          repository: sleepypod/ios
+          repository: ${{ inputs.repository }}
           ref: ${{ inputs.ref }}
           path: source
           lfs: true
@@ -43,7 +48,7 @@ jobs:
         run: |
           app="$RUNNER_TEMP/derived/Build/Products/Release-iphoneos/Sleepypod.app"
           test -d "$app"
-          safe_ref=$(printf '%s' "$SOURCE_REF" | tr '/' '-')
+          safe_ref=$(printf '%s-%s' "${SOURCE_REPO%%/*}" "$SOURCE_REF" | tr '/' '-')
           ipa="Sleepypod-$safe_ref-unsigned.ipa"
           mkdir Payload
           cp -R "$app" Payload/
@@ -57,5 +62,5 @@ jobs:
         run: >
           gh release create "$SAFE_REF-build-$GITHUB_RUN_NUMBER" "$IPA"
           --repo "$GITHUB_REPOSITORY"
-          --title "Sleepypod $SOURCE_REF unsigned build $GITHUB_RUN_NUMBER"
-          --notes "Unsigned build of https://github.com/sleepypod/ios at $SOURCE_REF. Source and AGPL-3.0 license are in that repository."
+          --title "Sleepypod $SOURCE_REPO $SOURCE_REF unsigned build $GITHUB_RUN_NUMBER"
+          --notes "Unsigned build of https://github.com/$SOURCE_REPO at $SOURCE_REF. Source and AGPL-3.0 license are in that repository."
